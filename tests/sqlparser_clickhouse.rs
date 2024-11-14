@@ -192,6 +192,7 @@ fn parse_delimited_identifiers() {
     );
     assert_eq!(
         &Expr::Function(Function {
+            namespace: None,
             name: ObjectName(vec![Ident::with_quote('"', "myfun")]),
             parameters: FunctionArguments::None,
             args: FunctionArguments::List(FunctionArgumentList {
@@ -814,6 +815,7 @@ fn parse_create_table_with_variant_default_expressions() {
                         options: vec![ColumnOptionDef {
                             name: None,
                             option: ColumnOption::Materialized(Expr::Function(Function {
+                                namespace: None,
                                 name: ObjectName(vec![Ident::new("now")]),
                                 args: FunctionArguments::List(FunctionArgumentList {
                                     args: vec![],
@@ -835,6 +837,7 @@ fn parse_create_table_with_variant_default_expressions() {
                         options: vec![ColumnOptionDef {
                             name: None,
                             option: ColumnOption::Ephemeral(Some(Expr::Function(Function {
+                                namespace: None,
                                 name: ObjectName(vec![Ident::new("now")]),
                                 args: FunctionArguments::List(FunctionArgumentList {
                                     args: vec![],
@@ -865,6 +868,7 @@ fn parse_create_table_with_variant_default_expressions() {
                         options: vec![ColumnOptionDef {
                             name: None,
                             option: ColumnOption::Alias(Expr::Function(Function {
+                                namespace: None,
                                 name: ObjectName(vec![Ident::new("toString")]),
                                 args: FunctionArguments::List(FunctionArgumentList {
                                     args: vec![FunctionArg::Unnamed(FunctionArgExpr::Expr(

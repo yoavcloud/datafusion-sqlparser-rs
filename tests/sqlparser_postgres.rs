@@ -2499,6 +2499,7 @@ fn parse_array_subquery_expr() {
     let select = pg().verified_only_select(sql);
     assert_eq!(
         &Expr::Function(Function {
+            namespace: None,
             name: ObjectName(vec![Ident::new("ARRAY")]),
             parameters: FunctionArguments::None,
             args: FunctionArguments::Subquery(Box::new(Query {
@@ -2863,6 +2864,7 @@ fn test_composite_value() {
         SelectItem::UnnamedExpr(Expr::CompositeAccess {
             key: Ident::new("n"),
             expr: Box::new(Expr::Nested(Box::new(Expr::Function(Function {
+                namespace: None,
                 name: ObjectName(vec![
                     Ident::new("information_schema"),
                     Ident::new("_pg_expandarray")
@@ -3105,6 +3107,7 @@ fn parse_current_functions() {
     let select = pg_and_generic().verified_only_select(sql);
     assert_eq!(
         &Expr::Function(Function {
+            namespace: None,
             name: ObjectName(vec![Ident::new("CURRENT_CATALOG")]),
             parameters: FunctionArguments::None,
             args: FunctionArguments::None,
@@ -3117,6 +3120,7 @@ fn parse_current_functions() {
     );
     assert_eq!(
         &Expr::Function(Function {
+            namespace: None,
             name: ObjectName(vec![Ident::new("CURRENT_USER")]),
             parameters: FunctionArguments::None,
             args: FunctionArguments::None,
@@ -3129,6 +3133,7 @@ fn parse_current_functions() {
     );
     assert_eq!(
         &Expr::Function(Function {
+            namespace: None,
             name: ObjectName(vec![Ident::new("SESSION_USER")]),
             parameters: FunctionArguments::None,
             args: FunctionArguments::None,
@@ -3141,6 +3146,7 @@ fn parse_current_functions() {
     );
     assert_eq!(
         &Expr::Function(Function {
+            namespace: None,
             name: ObjectName(vec![Ident::new("USER")]),
             parameters: FunctionArguments::None,
             args: FunctionArguments::None,
@@ -3593,6 +3599,7 @@ fn parse_delimited_identifiers() {
     );
     assert_eq!(
         &Expr::Function(Function {
+            namespace: None,
             name: ObjectName(vec![Ident::with_quote('"', "myfun")]),
             parameters: FunctionArguments::None,
             args: FunctionArguments::List(FunctionArgumentList {

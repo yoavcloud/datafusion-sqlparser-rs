@@ -607,6 +607,7 @@ fn test_duckdb_named_argument_function_with_assignment_operator() {
     let select = duckdb_and_generic().verified_only_select(sql);
     assert_eq!(
         &Expr::Function(Function {
+            namespace: None,
             name: ObjectName(vec![Ident::new("FUN")]),
             parameters: FunctionArguments::None,
             args: FunctionArguments::List(FunctionArgumentList {

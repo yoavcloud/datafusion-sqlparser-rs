@@ -808,6 +808,8 @@ pub enum Expr {
     },
     /// Scalar function call e.g. `LEFT(foo, 5)`
     Function(Function),
+    /// Function invication chain e.g. `f1(3).f2(42).f3('foundation', x)`
+    FunctionInvocationChain(Vec<Function>),
     /// `CASE [<operand>] WHEN <condition> THEN <result> ... [ELSE <result>] END`
     ///
     /// Note we only recognize a complete single expression as `<condition>`,
@@ -1464,6 +1466,9 @@ impl fmt::Display for Expr {
                 write!(f, " '{}'", &value::escape_single_quote_string(value))
             }
             Expr::Function(fun) => write!(f, "{fun}"),
+            Expr::FunctionInvocationChain(functions) => {
+                write!(f, "{}", display_separated(functions, "."))
+            }
             Expr::Case {
                 operand,
                 conditions,
@@ -5424,11 +5429,32 @@ impl fmt::Display for CloseCursor {
     }
 }
 
+/// A namespace for a function. For example in MSSQL,
+/// `SELECT geography::STGeomFromText(...)`, `geography` is the datatype
+/// that introduces the `STGeomFromText` function.
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct FunctionNamespace {
+    /// The name of the namespace
+    pub name: String,
+    /// The separator used between the namespace
+    /// and the function's name
+    pub separator: String,
+}
+
+impl fmt::Display for FunctionNamespace {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}{}", self.name, self.separator)
+    }
+}
+
 /// A function call
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
 pub struct Function {
+    pub namespace: Option<FunctionNamespace>,
     pub name: ObjectName,
     /// The parameters to the function, including any options specified within the
     /// delimiting parentheses.
@@ -5468,6 +5494,9 @@ pub struct Function {
 
 impl fmt::Display for Function {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(namespace) = &self.namespace {
+            write!(f, "{}", namespace)?;
+        }
         write!(f, "{}{}{}", self.name, self.parameters, self.args)?;
 
         if !self.within_group.is_empty() {

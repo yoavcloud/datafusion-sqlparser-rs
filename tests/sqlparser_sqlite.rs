@@ -418,6 +418,7 @@ fn parse_window_function_with_filter() {
         assert_eq!(
             select.projection,
             vec![SelectItem::UnnamedExpr(Expr::Function(Function {
+                namespace: None,
                 name: ObjectName(vec![Ident::new(func_name)]),
                 parameters: FunctionArguments::None,
                 args: FunctionArguments::List(FunctionArgumentList {

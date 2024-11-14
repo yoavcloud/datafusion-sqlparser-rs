@@ -40,6 +40,20 @@ impl Dialect for MsSqlDialect {
             || ch == '_'
     }
 
+    // fn parse_infix(&self, parser: &mut Parser, expr: &Expr, precedence: u8) -> Option<Result<Expr, ParserError>> {
+    //     if let Expr::Identifier(i) = expr {
+    //         if let Token::DoubleColon = parser.next_token().token {
+    //             let _ = parser.consume_token(&Token::DoubleColon);
+    //             if let Token::Word(w) = parser.next_token().token {
+
+    //             }
+
+    //         }
+    //     }
+    //     println!("EXP: {:#?}", expr);
+    //     None
+    // }
+
     /// SQL Server has `CONVERT(type, value)` instead of `CONVERT(value, type)`
     /// <https://learn.microsoft.com/en-us/sql/t-sql/functions/cast-and-convert-transact-sql?view=sql-server-ver16>
     fn convert_type_before_value(&self) -> bool {
@@ -61,5 +75,9 @@ impl Dialect for MsSqlDialect {
     /// In MSSQL, there is no boolean type, and `true` and `false` are valid column names
     fn supports_boolean_literals(&self) -> bool {
         false
+    }
+
+    fn supports_static_method_invocation(&self) -> bool {
+        true
     }
 }

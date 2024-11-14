@@ -628,6 +628,11 @@ pub trait Dialect: Debug + Any {
     fn supports_show_like_before_in(&self) -> bool {
         false
     }
+
+    /// Returns true if this dialect supports static method invocations.
+    fn supports_static_method_invocation(&self) -> bool {
+        false
+    }
 }
 
 /// This represents the operators for which precedence must be defined

@@ -1029,6 +1029,7 @@ impl<'a> Parser<'a> {
                     if dialect_of!(self is PostgreSqlDialect | GenericDialect) =>
                 {
                     Ok(Expr::Function(Function {
+                        namespace: None,
                         name: ObjectName(vec![w.to_ident()]),
                         parameters: FunctionArguments::None,
                         args: FunctionArguments::None,
@@ -1087,6 +1088,7 @@ impl<'a> Parser<'a> {
                     let query = self.parse_query()?;
                     self.expect_token(&Token::RParen)?;
                     Ok(Expr::Function(Function {
+                        namespace: None,
                         name: ObjectName(vec![w.to_ident()]),
                         parameters: FunctionArguments::None,
                         args: FunctionArguments::Subquery(query),
@@ -1156,7 +1158,9 @@ impl<'a> Parser<'a> {
                                 )))
                             } else {
                                 self.prev_token();
-                                self.parse_function(ObjectName(id_parts))
+                                Ok(Expr::Function(
+                                    self.parse_function(None, ObjectName(id_parts))?
+                                ))
                             }
                         } else {
                             Ok(Expr::CompoundIdentifier(id_parts))
@@ -1179,6 +1183,35 @@ impl<'a> Parser<'a> {
                             params: OneOrManyWithParens::One(w.to_ident()),
                             body: Box::new(self.parse_expr()?),
                         }));
+                    }
+                    Token::DoubleColon if self.dialect.supports_static_method_invocation() => {
+                        self.expect_token(&Token::DoubleColon)?;
+                        let mut functions = vec![];
+                        let mut namespace = Some(FunctionNamespace{
+                            name: w.value,
+                            separator: "::".to_string()
+                        });
+                        let mut id_parts = vec![];
+                        loop {
+                            match self.next_token().token {
+                                Token::Word(next_word) => {
+                                    id_parts.push(next_word.to_ident());
+                                }
+                                Token::Period => {
+                                    // Periods in the name are the separator
+                                    // of the function's name
+                                },
+                                Token::LParen => {
+                                    self.prev_token();
+                                    functions.push(self.parse_function(namespace.take(), ObjectName(std::mem::take(&mut id_parts)))?);
+                                    // If the method invocation chain is over, return the list of functions
+                                    if !self.consume_token(&Token::Period) {
+                                        return Ok(Expr::FunctionInvocationChain(functions))
+                                    }
+                                },
+                                _ => return self.expected("dot separated method", self.peek_token())
+                            }
+                        }
                     }
                     _ => Ok(Expr::Identifier(w.to_ident())),
                 },
@@ -1356,7 +1389,11 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub fn parse_function(&mut self, name: ObjectName) -> Result<Expr, ParserError> {
+    pub fn parse_function(
+        &mut self,
+        namespace: Option<FunctionNamespace>,
+        name: ObjectName,
+    ) -> Result<Function, ParserError> {
         self.expect_token(&Token::LParen)?;
 
         // Snowflake permits a subquery to be passed as an argument without
@@ -1364,7 +1401,8 @@ impl<'a> Parser<'a> {
         if dialect_of!(self is SnowflakeDialect) && self.peek_sub_query() {
             let subquery = self.parse_query()?;
             self.expect_token(&Token::RParen)?;
-            return Ok(Expr::Function(Function {
+            return Ok(Function {
+                namespace,
                 name,
                 parameters: FunctionArguments::None,
                 args: FunctionArguments::Subquery(subquery),
@@ -1372,7 +1410,7 @@ impl<'a> Parser<'a> {
                 null_treatment: None,
                 over: None,
                 within_group: vec![],
-            }));
+            });
         }
 
         let mut args = self.parse_function_argument_list()?;
@@ -1431,7 +1469,8 @@ impl<'a> Parser<'a> {
             None
         };
 
-        Ok(Expr::Function(Function {
+        Ok(Function {
+            namespace,
             name,
             parameters,
             args: FunctionArguments::List(args),
@@ -1439,7 +1478,7 @@ impl<'a> Parser<'a> {
             filter,
             over,
             within_group,
-        }))
+        })
     }
 
     /// Optionally parses a null treatment clause.
@@ -1465,6 +1504,7 @@ impl<'a> Parser<'a> {
             FunctionArguments::None
         };
         Ok(Expr::Function(Function {
+            namespace: None,
             name,
             parameters: FunctionArguments::None,
             args,
@@ -1812,7 +1852,9 @@ impl<'a> Parser<'a> {
             Some(expr) => Ok(expr),
             // Snowflake supports `position` as an ordinary function call
             // without the special `IN` syntax.
-            None => self.parse_function(ObjectName(vec![ident])),
+            None => Ok(Expr::Function(
+                self.parse_function(None, ObjectName(vec![ident]))?,
+            )),
         }
     }
 
@@ -7346,15 +7388,10 @@ impl<'a> Parser<'a> {
     pub fn parse_call(&mut self) -> Result<Statement, ParserError> {
         let object_name = self.parse_object_name(false)?;
         if self.peek_token().token == Token::LParen {
-            match self.parse_function(object_name)? {
-                Expr::Function(f) => Ok(Statement::Call(f)),
-                other => parser_err!(
-                    format!("Expected a simple procedure call but found: {other}"),
-                    self.peek_token().location
-                ),
-            }
+            Ok(Statement::Call(self.parse_function(None, object_name)?))
         } else {
             Ok(Statement::Call(Function {
+                namespace: None,
                 name: object_name,
                 parameters: FunctionArguments::None,
                 args: FunctionArguments::None,
@@ -10636,7 +10673,8 @@ impl<'a> Parser<'a> {
             Token::Word(w) => Ok(w.value),
             _ => self.expected("a function identifier", self.peek_token()),
         }?;
-        let expr = self.parse_function(ObjectName(vec![Ident::new(function_name)]))?;
+        let expr =
+            Expr::Function(self.parse_function(None, ObjectName(vec![Ident::new(function_name)]))?);
         let alias = if self.parse_keyword(Keyword::AS) {
             Some(self.parse_identifier(false)?)
         } else {

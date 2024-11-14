@@ -699,6 +699,7 @@ fn parse_delimited_identifiers() {
     );
     assert_eq!(
         &Expr::Function(Function {
+            namespace: None,
             name: ObjectName(vec![Ident::with_quote('"', "myfun")]),
             parameters: FunctionArguments::None,
             args: FunctionArguments::List(FunctionArgumentList {
@@ -1151,6 +1152,7 @@ fn parse_create_table_with_valid_options() {
                     },
                     value: Expr::Function(
                         Function {
+                            namespace: None,
                             name: ObjectName(
                                 vec![
                                     Ident {
@@ -1442,6 +1444,21 @@ fn parse_true_false_as_identifiers() {
     assert_eq!(
         ms().verified_expr("false"),
         Expr::Identifier(Ident::new("false"))
+    );
+}
+
+#[test]
+fn test_geography() {
+    let dialects = all_dialects_where(|d| d.supports_static_method_invocation());
+    dialects.verified_stmt(
+        "SELECT geography::STGeomFromText('LINESTRING(-122.360 47.656, -122.343 47.656 )', 4326)",
+    );
+    dialects.verified_stmt("SELECT a, CAST(geography::STGeomFromText('LINESTRING(-122.360 47.656, -122.343 47.656 )', 4326) AS CHARACTER VARYING(MAX)) AS b FROM customers");
+    dialects.verified_stmt(
+        "SELECT phone, geography::STGeomFromText('POLYGON((-122.358 47.653, -122.348 47.649, -122.348 47.658, -122.358 47.658, -122.358 47.653))', 4326).CurveToLineWithTolerance(234, 1234).CurveToLineWithTolerance(234, 1234).ToString() FROM customers"
+    );
+    dialects.verified_stmt(
+        "SELECT a, some_namespace::method_a().method_b(345345).method_c.d.e('42') FROM customers",
     );
 }
 
