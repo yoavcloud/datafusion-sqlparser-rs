@@ -5032,12 +5032,12 @@ fn test_text_cast_with_length_modifier() {
         _ => unreachable!(),
     }
 
-    snowflake().verified_statement("SELECT col::TEXT(16777216) AS col FROM t");
+    snowflake().verified_stmt("SELECT col::TEXT(16777216) AS col FROM t");
 }
 
 #[test]
 fn test_plain_text_data_type_still_parses_as_text() {
-    match snowflake().verified_statement("CREATE TABLE t (c TEXT)") {
+    match snowflake().verified_stmt("CREATE TABLE t (c TEXT)") {
         Statement::CreateTable(CreateTable { columns, .. }) => {
             assert_eq!(columns[0].data_type, DataType::Text);
         }
