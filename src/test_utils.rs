@@ -199,8 +199,13 @@ impl TestedDialects {
     /// Ensures that `sql` parses as a single [Statement], and that
     /// re-serializing the parse result produces the same `sql`
     /// string (is not modified after a serialization round-trip).
-    pub fn verified_stmt(&self, sql: &str) -> Statement {
+    pub fn verified_statement(&self, sql: &str) -> Statement {
         self.one_statement_parses_to(sql, sql)
+    }
+
+    /// Shorthand for [`TestedDialects::verified_statement`].
+    pub fn verified_stmt(&self, sql: &str) -> Statement {
+        self.verified_statement(sql)
     }
 
     /// Ensures that `sql` parses as a single [Query], and that
