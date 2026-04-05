@@ -5010,3 +5010,51 @@ fn test_select_dollar_column_from_stage() {
     // With table function args, without alias
     snowflake().verified_stmt("SELECT $1, $2 FROM @mystage1(file_format => 'myformat')");
 }
+
+#[test]
+fn test_snowflake_text_cast_with_length() {
+    let expr = snowflake().verified_expr("_ID::TEXT(16777216)");
+    match expr {
+        Expr::Cast {
+            kind: CastKind::DoubleColon,
+            data_type,
+            ..
+        } => {
+            assert_eq!(
+                data_type,
+                DataType::Custom(
+                    ObjectName::from(vec![Ident::new("TEXT")]),
+                    vec!["16777216".to_string()],
+                )
+            );
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn test_snowflake_create_table_with_text_length() {
+    match snowflake().verified_stmt("CREATE TABLE my_table (a TEXT(16777216), b TEXT)") {
+        Statement::CreateTable(CreateTable { columns, .. }) => {
+            assert_eq!(
+                columns,
+                vec![
+                    ColumnDef {
+                        name: "a".into(),
+                        data_type: DataType::Custom(
+                            ObjectName::from(vec![Ident::new("TEXT")]),
+                            vec!["16777216".to_string()],
+                        ),
+                        options: vec![],
+                    },
+                    ColumnDef {
+                        name: "b".into(),
+                        data_type: DataType::Text,
+                        options: vec![],
+                    },
+                ]
+            );
+        }
+        _ => unreachable!(),
+    }
+}

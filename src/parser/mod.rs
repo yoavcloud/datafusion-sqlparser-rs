@@ -12170,7 +12170,18 @@ impl<'a> Parser<'a> {
                     self.expect_token(&Token::RParen)?;
                     Ok(DataType::FixedString(character_length))
                 }
-                Keyword::TEXT => Ok(DataType::Text),
+                Keyword::TEXT => {
+                    if dialect_is!(dialect is SnowflakeDialect)
+                        && self.peek_token_ref().token == Token::LParen
+                    {
+                        Ok(DataType::Custom(
+                            ObjectName::from(vec![Ident::new("TEXT")]),
+                            self.parse_optional_type_modifiers()?.unwrap_or_default(),
+                        ))
+                    } else {
+                        Ok(DataType::Text)
+                    }
+                }
                 Keyword::TINYTEXT => Ok(DataType::TinyText),
                 Keyword::MEDIUMTEXT => Ok(DataType::MediumText),
                 Keyword::LONGTEXT => Ok(DataType::LongText),
