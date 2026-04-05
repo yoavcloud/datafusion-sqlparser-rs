@@ -11909,7 +11909,6 @@ impl<'a> Parser<'a> {
         self.advance_token();
         let next_token = self.get_current_token();
         let next_token_index = self.get_current_index();
-        let next_token_span = next_token.span;
 
         let mut trailing_bracket: MatchedTrailingBracket = false.into();
         let mut data = match &next_token.token {
@@ -12172,9 +12171,13 @@ impl<'a> Parser<'a> {
                     Ok(DataType::FixedString(character_length))
                 }
                 Keyword::TEXT => {
-                    let type_name = w.to_ident(next_token_span);
-                    if let Some(modifiers) = self.parse_optional_type_modifiers()? {
-                        Ok(DataType::Custom(type_name.into(), modifiers))
+                    if dialect_of!(self is SnowflakeDialect) {
+                        let type_name = w.to_ident(next_token.span);
+                        if let Some(modifiers) = self.parse_optional_type_modifiers()? {
+                            Ok(DataType::Custom(type_name.into(), modifiers))
+                        } else {
+                            Ok(DataType::Text)
+                        }
                     } else {
                         Ok(DataType::Text)
                     }
