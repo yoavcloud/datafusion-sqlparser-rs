@@ -140,7 +140,7 @@ impl TestedDialects {
     ///
     /// In general, the canonical SQL should be the same (see crate
     /// documentation for rationale) and you should prefer the `verified_`
-    /// variants in testing, such as  [`verified_stmt`] or
+    /// variants in testing, such as  [`verified_statement`] or
     /// [`verified_query`].
     ///
     /// If `canonical` is non empty,this function additionally asserts
