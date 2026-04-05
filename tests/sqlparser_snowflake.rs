@@ -5010,3 +5010,40 @@ fn test_select_dollar_column_from_stage() {
     // With table function args, without alias
     snowflake().verified_stmt("SELECT $1, $2 FROM @mystage1(file_format => 'myformat')");
 }
+
+#[test]
+fn test_text_cast_with_length_modifier() {
+    let select = snowflake().verified_only_select("SELECT col::TEXT(16777216) AS col FROM t");
+
+    match &select.projection[0] {
+        SelectItem::ExprWithAlias {
+            expr: Expr::Cast { data_type, .. },
+            alias,
+        } => {
+            assert_eq!(alias, &Ident::new("col"));
+            assert_eq!(
+                data_type,
+                &DataType::Custom(
+                    ObjectName::from(vec![Ident::new("TEXT")]),
+                    vec!["16777216".to_string()],
+                )
+            );
+        }
+        _ => unreachable!(),
+    }
+
+    snowflake().one_statement_parses_to(
+        "SELECT col::TEXT(16777216) AS col FROM t",
+        "SELECT col::TEXT(16777216) AS col FROM t",
+    );
+}
+
+#[test]
+fn test_plain_text_data_type_still_parses_as_text() {
+    match snowflake().verified_stmt("CREATE TABLE t (c TEXT)") {
+        Statement::CreateTable(CreateTable { columns, .. }) => {
+            assert_eq!(columns[0].data_type, DataType::Text);
+        }
+        _ => unreachable!(),
+    }
+}
