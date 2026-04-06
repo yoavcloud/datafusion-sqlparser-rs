@@ -12170,20 +12170,13 @@ impl<'a> Parser<'a> {
                     self.expect_token(&Token::RParen)?;
                     Ok(DataType::FixedString(character_length))
                 }
-                Keyword::TEXT => {
-                    if dialect_is!(dialect is SnowflakeDialect) {
-                        if let Some(modifiers) = self.parse_optional_type_modifiers()? {
-                            Ok(DataType::Custom(
-                                ObjectName::from(vec![Ident::new("TEXT")]),
-                                modifiers,
-                            ))
-                        } else {
-                            Ok(DataType::Text)
-                        }
-                    } else {
-                        Ok(DataType::Text)
-                    }
-                }
+                Keyword::TEXT => match self.parse_optional_type_modifiers()? {
+                    Some(modifiers) => Ok(DataType::Custom(
+                        ObjectName::from(vec![Ident::new("TEXT")]),
+                        modifiers,
+                    )),
+                    None => Ok(DataType::Text),
+                },
                 Keyword::TINYTEXT => Ok(DataType::TinyText),
                 Keyword::MEDIUMTEXT => Ok(DataType::MediumText),
                 Keyword::LONGTEXT => Ok(DataType::LongText),
@@ -20213,7 +20206,7 @@ mod tests {
         use crate::ast::{
             CharLengthUnits, CharacterLength, DataType, ExactNumberInfo, ObjectName, TimezoneInfo,
         };
-        use crate::dialect::{AnsiDialect, GenericDialect, PostgreSqlDialect};
+        use crate::dialect::{AnsiDialect, GenericDialect, PostgreSqlDialect, SnowflakeDialect};
         use crate::test_utils::TestedDialects;
 
         macro_rules! test_parse_data_type {
@@ -20412,6 +20405,24 @@ mod tests {
                 DataType::Custom(
                     ObjectName::from(vec!["GEOMETRY".into()]),
                     vec!["POINT".to_string(), "4326".to_string()]
+                )
+            );
+        }
+
+        #[test]
+        fn test_parse_text_with_length_as_custom_type() {
+            let dialect = TestedDialects::new(vec![
+                Box::new(GenericDialect {}),
+                Box::new(PostgreSqlDialect {}),
+                Box::new(SnowflakeDialect {}),
+            ]);
+
+            test_parse_data_type!(
+                dialect,
+                "TEXT(16777216)",
+                DataType::Custom(
+                    ObjectName::from(vec!["TEXT".into()]),
+                    vec!["16777216".to_string()]
                 )
             );
         }

@@ -5012,7 +5012,7 @@ fn test_select_dollar_column_from_stage() {
 }
 
 #[test]
-fn test_parse_pg_style_cast_to_text_with_length() {
+fn test_parse_cast_to_text_with_length() {
     let select = snowflake().verified_only_select(
         "SELECT _ID::TEXT(16777216) AS _ID FROM INCARE_ANALYTICS.USER_DETAILS",
     );
@@ -5032,27 +5032,6 @@ fn test_parse_pg_style_cast_to_text_with_length() {
                 DataType::Custom(
                     ObjectName::from(vec![Ident::new("TEXT")]),
                     vec!["16777216".to_string()],
-                )
-            );
-        }
-        _ => unreachable!(),
-    }
-}
-
-#[test]
-fn test_parse_cast_function_to_text_with_length() {
-    let select = snowflake().verified_only_select("SELECT CAST(_ID AS TEXT(42)) FROM USER_DETAILS");
-    match expr_from_projection(only(&select.projection)) {
-        Expr::Cast {
-            kind: CastKind::Cast,
-            data_type,
-            ..
-        } => {
-            assert_eq!(
-                *data_type,
-                DataType::Custom(
-                    ObjectName::from(vec![Ident::new("TEXT")]),
-                    vec!["42".to_string()],
                 )
             );
         }
