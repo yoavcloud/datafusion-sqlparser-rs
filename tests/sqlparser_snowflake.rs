@@ -5010,3 +5010,52 @@ fn test_select_dollar_column_from_stage() {
     // With table function args, without alias
     snowflake().verified_stmt("SELECT $1, $2 FROM @mystage1(file_format => 'myformat')");
 }
+
+#[test]
+fn test_parse_pg_style_cast_to_text_with_length() {
+    let select = snowflake().verified_only_select(
+        "SELECT _ID::TEXT(16777216) AS _ID FROM INCARE_ANALYTICS.USER_DETAILS",
+    );
+    match only(&select.projection) {
+        SelectItem::ExprWithAlias {
+            expr:
+                Expr::Cast {
+                    kind: CastKind::DoubleColon,
+                    data_type,
+                    ..
+                },
+            alias,
+        } => {
+            assert_eq!(alias.value, "_ID");
+            assert_eq!(
+                *data_type,
+                DataType::Custom(
+                    ObjectName::from(vec![Ident::new("TEXT")]),
+                    vec!["16777216".to_string()],
+                )
+            );
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn test_parse_cast_function_to_text_with_length() {
+    let select = snowflake().verified_only_select("SELECT CAST(_ID AS TEXT(42)) FROM USER_DETAILS");
+    match expr_from_projection(only(&select.projection)) {
+        Expr::Cast {
+            kind: CastKind::Cast,
+            data_type,
+            ..
+        } => {
+            assert_eq!(
+                *data_type,
+                DataType::Custom(
+                    ObjectName::from(vec![Ident::new("TEXT")]),
+                    vec!["42".to_string()],
+                )
+            );
+        }
+        _ => unreachable!(),
+    }
+}
